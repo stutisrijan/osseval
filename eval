@@ -1,0 +1,65 @@
+import requests
+from bs4 import BeautifulSoup
+import pandas as pd
+url="https://saras.cbse.gov.in/SARAS/AffiliatedList/ListOfSchdirReport"
+
+soup=BeautifulSoup(request.content,"html.parser")
+
+aff_no_list = []
+state_district_list = []
+status_list = []
+school_list = []
+head_name_list = []
+
+table = soup.find('table') 
+rows = table.find_all('tr')[1:] 
+
+for row in rows:
+    cols = row.find_all('td')
+    aff_no_list.append(cols[0].text.strip())
+    state_district_list.append(cols[1].text.strip())
+    status_list.append(cols[2].text.strip())
+    school_list.append(cols[3].text.strip())
+    head_name_list.append(cols[4].text.strip())
+    
+data = {
+    'Aff No': aff_no_list,
+    'State & District': state_district_list,
+    'Status': status_list,
+    'School': school_list,
+    'Head Name': head_name_list
+}
+df = pd.DataFrame(data)
+
+print(df.head())
+
+
+rajesh_school = df[df['Head Name'] == 'RAJESH KUMAR']['School'].values
+print(f"School with Principal Rajesh Kumar: {rajesh_school}")
+
+
+
+total_schools = df['School'].nunique()
+print(f"Total number of schools: {total_schools}")
+
+
+
+from pymongo import MongoClient
+
+client = MongoClient('mongodb://localhost:27017/')
+db = client['school_data']
+collection = db['affiliated_schools']
+
+
+data_to_insert = df.to_dict(orient='records')  
+collection.insert_many(data_to_insert)
+
+print("Data inserted into MongoDB successfully.")
+
+senior_secondary_count = collection.count_documents({"Status": "Senior Secondary"})
+
+
+secondary_count = collection.count_documents({"Status": "Secondary"})
+
+print(f"Senior Secondary Schools: {senior_secondary_count}")
+print(f"Secondary Schools: {secondary_count}")
